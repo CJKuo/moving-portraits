@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Moving Portraits</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+      #start-overlay {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 18px; padding: 24px; text-align: center;
+        background: radial-gradient(circle at 50% 40%, #3a2a14 0%, #0d0905 75%);
+        color: #f3e6c8; font-family: Georgia, "Times New Roman", serif;
+      }
+      #start-overlay h1 { margin: 0; font-size: 28px; font-weight: normal; letter-spacing: 0.04em; }
+      #start-overlay p { margin: 0; max-width: 320px; line-height: 1.5; opacity: 0.85; }
+      #start-btn {
+        padding: 14px 32px; font-size: 17px; font-family: inherit;
+        border: 1px solid #d9b56a; border-radius: 999px;
+        background: #d9b56a; color: #1a1209; cursor: pointer;
+      }
+      #error { color: #ffb4a8; display: none; max-width: 320px; }
+    </style>
+  </head>
+  <body>
+    <div id="start-overlay">
+      <h1>Moving Portraits</h1>
+      <p>Tap below, allow camera access, then point your phone at the photograph.</p>
+      <button id="start-btn">Start</button>
+      <p id="error"></p>
+    </div>
+
+    <!--
+      autoStart:false so the camera only opens after the tap (which also
+      unlocks video playback on iOS Safari).
+    -->
+    <a-scene
+      mindar-image="imageTargetSrc: ./Golden%20Dragon%20-%201/targets.mind; autoStart: false; maxTrack: 1; filterMinCF: 0.0001; filterBeta: 0.001"
+      color-space="sRGB"
+      renderer="colorManagement: true; antialias: true"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
+      <a-assets timeout="30000">
+        <video
+          id="vid-0"
+          src="./Golden%20Dragon%20-%201/Golden%20Dragon%201%20-%20Video.mp4"
+          preload="auto"
+          loop
+          muted
+          playsinline
+          webkit-playsinline
+          crossorigin="anonymous"
+        ></video>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!--
+        targetIndex 0 = the first image compiled into targets.mind.
+        MindAR makes the target 1 unit wide. The printed photo is 1438x1132,
+        so the plane is 1 x (1132/1438) = 0.787 tall.
+
+        The video is 1280x720 (wider than the photo). The photo is exactly the
+        region x 2..910, y 0..715 of the video, so the texture repeat/offset
+        crop to just that part (repeat = 908/1280, 715/720; offset = 2/1280,
+        5/720 from the bottom). This also hides the watermark in the corner.
+      -->
+      <a-entity id="target-0" mindar-image-target="targetIndex: 0">
+        <a-plane
+          width="1"
+          height="0.7872"
+          position="0 0 0.001"
+          material="shader: flat; src: #vid-0; repeat: 0.709375 0.993056; offset: 0.0015625 0.006944"
+        ></a-plane>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      const startBtn = document.getElementById("start-btn");
+      const overlay = document.getElementById("start-overlay");
+      const errorEl = document.getElementById("error");
+      const sceneEl = document.querySelector("a-scene");
+      const video = document.getElementById("vid-0");
+      const target = document.getElementById("target-0");
+
+      function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.style.display = "block";
+        startBtn.disabled = false;
+        startBtn.textContent = "Try again";
+      }
+
+      startBtn.addEventListener("click", async () => {
+        startBtn.disabled = true;
+        startBtn.textContent = "Starting…";
+
+        // Unlock video playback inside the user gesture (needed on iOS).
+        try { await video.play(); video.pause(); video.currentTime = 0; } catch (e) {}
+
+        if (!window.isSecureContext) {
+          showError("The camera only works over https://. Open this page from its https address.");
+          return;
+        }
+
+        const begin = () => {
+          overlay.style.display = "none";
+          sceneEl.systems["mindar-image-system"].start(); // MindAR shows its own loading/scanning UI
+        };
+        if (sceneEl.renderStarted) begin();
+        else sceneEl.addEventListener("renderstart", begin, { once: true });
+      });
+
+      sceneEl.addEventListener("arError", () => {
+        showError("Couldn't open the camera. Check that camera access is allowed for this site.");
+        overlay.style.display = "flex";
+      });
+
+      // Play from the first frame (which matches the print) when the photo is
+      // found; pause when it leaves the view.
+      target.addEventListener("targetFound", () => {
+        video.currentTime = 0;
+        video.play().catch(() => {});
+      });
+      target.addEventListener("targetLost", () => {
+        video.pause();
+      });
+    </script>
+  </body>
+</html>
