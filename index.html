@@ -41,8 +41,15 @@
       autoStart:false so the camera only opens after the tap (which also
       unlocks video playback on iOS Safari).
     -->
+    <!--
+      Smoothing (MindAR's One Euro filter): lower filterMinCF = less jitter when
+      held still; higher filterBeta = less lag when moving. MindAR's defaults are
+      0.001 / 1000. filterBeta 0.001 made the overlay trail far behind the print
+      (it looked stuck and skewed), so beta is raised to 10 while keeping
+      filterMinCF low for a steady picture.
+    -->
     <a-scene
-      mindar-image="imageTargetSrc: ./Golden%20Dragon%20-%201/targets.mind; autoStart: false; maxTrack: 1; filterMinCF: 0.0001; filterBeta: 0.001"
+      mindar-image="imageTargetSrc: ./Golden%20Dragon%20-%201/targets.mind; autoStart: false; maxTrack: 1; filterMinCF: 0.0001; filterBeta: 10"
       color-space="sRGB"
       renderer="colorManagement: true; antialias: true"
       vr-mode-ui="enabled: false"
@@ -72,11 +79,14 @@
         region x 2..910, y 0..715 of the video, so the texture repeat/offset
         crop to just that part (repeat = 908/1280, 715/720; offset = 2/1280,
         5/720 from the bottom). This also hides the watermark in the corner.
+
+        The plane is drawn 2% larger than the photo (1.02 x 0.803) so small
+        tracking errors don't let the printed photo peek out around the edges.
       -->
       <a-entity id="target-0" mindar-image-target="targetIndex: 0">
         <a-plane
-          width="1"
-          height="0.7872"
+          width="1.02"
+          height="0.8029"
           position="0 0 0.001"
           material="shader: flat; src: #vid-0; repeat: 0.709375 0.993056; offset: 0.0015625 0.006944"
         ></a-plane>
